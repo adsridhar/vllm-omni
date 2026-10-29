@@ -754,6 +754,8 @@ class Cosmos3CrossAttention(nn.Module):
             causal=False,
             softmax_scale=1.0 / (self.head_dim**0.5),
             num_kv_heads=self.num_kv_heads,
+            role=f"{prefix}.attn",
+            role_category="self",
         )
         # Multi-control attention operates on one full [control_i, target]
         # sequence at a time. Keep those sequences replicated when Ulysses is
@@ -788,7 +790,12 @@ class Cosmos3CrossAttention(nn.Module):
         k_all = torch.cat([k_und, k], dim=1)
         v_all = torch.cat([v_und, v], dim=1)
 
-        out = self.attn(q, k_all, v_all)
+        backend = getattr(self.attn, "attn_backend", None)
+        if backend is not None and backend.get_name() == "SOL_ATTN":
+            metadata = AttentionMetadata(extra={"sol_kv_prefix_length": k_und.shape[1]})
+            out = self.attn(q, k_all, v_all, metadata)
+        else:
+            out = self.attn(q, k_all, v_all)
         return out.reshape(B, S_gen, -1)
 
     # -- SP path: framework Attention with joint_key/value -------------------

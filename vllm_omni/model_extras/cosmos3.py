@@ -6,6 +6,7 @@ from __future__ import annotations
 COSMOS3_EXTRA_BODY_PARAMS = frozenset(
     {
         "flow_shift",
+        "guidance_interval",
         "max_sequence_length",
         "use_resolution_template",
         "use_duration_template",

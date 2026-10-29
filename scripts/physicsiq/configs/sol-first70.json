@@ -1,0 +1,189 @@
+{
+  "default": {
+    "backend": "CUDNN_ATTN"
+  },
+  "per_role": {
+    "gen_layers.0.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.1.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.2.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.3.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.4.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.5.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.6.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.7.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.8.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.9.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.10.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.11.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.12.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.13.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.14.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.15.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.16.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.17.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.18.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.19.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.20.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.21.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.22.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.23.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.24.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    },
+    "gen_layers.25.cross_attention.attn": {
+      "backend": "SOL_ATTN",
+      "sol": {
+        "tau": 1.0,
+        "thresh_type": "diag"
+      }
+    }
+  }
+}

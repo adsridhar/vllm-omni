@@ -1,0 +1,5 @@
+{
+  "default": {
+    "backend": "CUDNN_ATTN"
+  }
+}

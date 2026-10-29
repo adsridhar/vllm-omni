@@ -1,0 +1,11 @@
+Source: NVlabs/Sana, techniques/sparse_backends
+Source branch: sol-engine
+Source commit: 41866cd96ef7718cbbe7a7b0fddcac68ca8a50a0
+
+This research snapshot includes the local SM100 mainloop changes present in the
+source checkout, together with the SM90 implementation. It is installed as a
+separate sol-attn package. The original package notices remain in
+sol_attn/THIRD_PARTY_NOTICES.md and sol_attn/sm100/LICENSE.flash-attention.
+
+The vLLM-Omni adapter accepts both cute_sm90 and cute_sm100. H200 validation
+covers the SM90 path; preserving SM100 source does not constitute an SM100 test.

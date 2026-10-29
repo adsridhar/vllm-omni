@@ -64,6 +64,7 @@ from vllm_omni.diffusion.distributed.pipeline_parallel import (
     PipelineParallelMixin,
 )
 from vllm_omni.diffusion.distributed.utils import get_local_device
+from vllm_omni.diffusion.forward_context import set_forward_context_denoise_timestep
 from vllm_omni.diffusion.media import (
     DiffusionMediaOutput,
     VideoMediaOutput,
@@ -2147,10 +2148,13 @@ class Cosmos3OmniDiffusersPipeline(
         self._num_timesteps = len(timesteps)
         sigmas = getattr(scheduler, "sigmas", None)
         self._current_sigma = sigmas[step_index] if sigmas is not None and step_index < len(sigmas) else None
+        train_steps = getattr(getattr(scheduler, "config", None), "num_train_timesteps", None)
+        set_forward_context_denoise_timestep(float(timesteps[step_index]) / train_steps if train_steps else None)
 
     def _clear_denoise_step_metadata(self) -> None:
         self._current_step_index = None
         self._current_sigma = None
+        set_forward_context_denoise_timestep(None)
 
     def _set_mixed_precision_step(self, step_index: int, num_steps: int) -> None:
         setter = getattr(self.transformer, "set_mixed_precision_step", None)

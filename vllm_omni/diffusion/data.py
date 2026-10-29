@@ -2142,6 +2142,21 @@ class BlockSparseSpec:
 
 
 @dataclass
+class SolAttentionSpec:
+    """Routing controls for the SOL CuTe DSL backend; no offline calibration."""
+
+    tau: float = 1.0
+    thresh_type: str = "diag"
+
+    def __post_init__(self) -> None:
+        self.tau = float(self.tau)
+        if not math.isfinite(self.tau):
+            raise ValueError("sol.tau must be finite.")
+        if self.thresh_type not in ("diag", "exact"):
+            raise ValueError("sol.thresh_type must be 'diag' or 'exact'.")
+
+
+@dataclass
 class AttentionSpec:
     """Specifies a backend and its typed backend-specific config for one attention role."""
 
@@ -2153,6 +2168,7 @@ class AttentionSpec:
     fastvideo_vsa_precision: str = "bf16"
     block_sparse: BlockSparseSpec | None = None
     skip_calibration: dict | None = field(default=None, repr=False)
+    sol: SolAttentionSpec | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.backend, str):
@@ -2160,6 +2176,9 @@ class AttentionSpec:
         self.skip_softmax = self._coerce(self.skip_softmax, SkipSoftmaxSpec, "skip_softmax")
         self.quant = self._coerce(self.quant, AttnQuantSpec, "quant")
         self.block_sparse = self._coerce(self.block_sparse, BlockSparseSpec, "block_sparse")
+        self.sol = self._coerce(self.sol, SolAttentionSpec, "sol")
+        if self.sol is not None and self.backend.upper() != "SOL_ATTN":
+            raise ValueError("sol configuration requires the SOL_ATTN backend.")
         if self.skip_softmax is not None and self.backend.upper() != "TRTLLM_ATTN":
             raise ValueError(
                 f"skip_softmax is only supported by the TRTLLM_ATTN backend, but backend={self.backend!r}. "
@@ -2206,6 +2225,8 @@ class AttentionSpec:
     def backend_kwargs(self) -> dict[str, Any] | None:
         """Serialize typed backend config into the kwargs dict the backend impl consumes."""
         kw: dict[str, Any] = {}
+        if self.sol is not None:
+            kw.update(tau=self.sol.tau, thresh_type=self.sol.thresh_type)
         if self.backend.upper() == "FASTVIDEO_VSA" and self.fastvideo_vsa_provider != "auto":
             kw["provider"] = self.fastvideo_vsa_provider
         if self.fastvideo_vsa_precision != "bf16":
@@ -2319,6 +2340,7 @@ class AttentionConfig:
             "fastvideo_vsa_provider",
             "fastvideo_vsa_precision",
             "block_sparse",
+            "sol",
         }
         node_dict = dict(node)
         node_keys = set(node_dict)
