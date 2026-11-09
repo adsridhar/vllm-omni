@@ -75,6 +75,20 @@ def test_sol_dense_routing_matches_sdpa():
     torch.testing.assert_close(impl.forward_cuda(q, k, v), expected, atol=3e-3, rtol=3e-3)
 
 
+def test_cosmos3_publishes_denoising_step_for_attention() -> None:
+    from vllm_omni.diffusion.forward_context import get_forward_context, set_forward_context
+    from vllm_omni.diffusion.models.cosmos3.pipeline_cosmos3 import Cosmos3OmniDiffusersPipeline
+
+    pipeline = SimpleNamespace()
+    scheduler = SimpleNamespace(sigmas=None, config=SimpleNamespace(num_train_timesteps=1000))
+    timesteps = torch.tensor([900, 700, 500])
+    with set_forward_context():
+        Cosmos3OmniDiffusersPipeline._set_denoise_step_metadata(pipeline, 1, timesteps, scheduler)
+        assert get_forward_context().denoise_step_idx == 1
+        Cosmos3OmniDiffusersPipeline._clear_denoise_step_metadata(pipeline)
+        assert get_forward_context().denoise_step_idx is None
+
+
 @pytest.mark.parametrize("tau,thresh_type", [(1.0, "diag"), (1.0, "exact"), (-100.0, "diag")])
 def test_sol_cosmos3_gqa_prefix(monkeypatch, tau, thresh_type):
     from sol_attn import sol_attn

@@ -2143,10 +2143,16 @@ class BlockSparseSpec:
 
 @dataclass
 class SolAttentionSpec:
-    """Routing controls for the SOL CuTe DSL backend; no offline calibration."""
+    """Routing controls for the SOL CuTe DSL backend; no offline calibration.
+
+    SOL runs for steps in [start_step, stop_step). Other steps use dense cuDNN.
+    The default range covers every denoising step.
+    """
 
     tau: float = 1.0
     thresh_type: str = "diag"
+    start_step: int = 0
+    stop_step: int | None = None
 
     def __post_init__(self) -> None:
         self.tau = float(self.tau)
@@ -2154,6 +2160,10 @@ class SolAttentionSpec:
             raise ValueError("sol.tau must be finite.")
         if self.thresh_type not in ("diag", "exact"):
             raise ValueError("sol.thresh_type must be 'diag' or 'exact'.")
+        if type(self.start_step) is not int or self.start_step < 0:
+            raise ValueError("sol.start_step must be a nonnegative integer.")
+        if self.stop_step is not None and (type(self.stop_step) is not int or self.stop_step <= self.start_step):
+            raise ValueError("sol.stop_step must be an integer greater than start_step.")
 
 
 @dataclass
@@ -2227,6 +2237,10 @@ class AttentionSpec:
         kw: dict[str, Any] = {}
         if self.sol is not None:
             kw.update(tau=self.sol.tau, thresh_type=self.sol.thresh_type)
+            if self.sol.start_step:
+                kw["start_step"] = self.sol.start_step
+            if self.sol.stop_step is not None:
+                kw["stop_step"] = self.sol.stop_step
         if self.backend.upper() == "FASTVIDEO_VSA" and self.fastvideo_vsa_provider != "auto":
             kw["provider"] = self.fastvideo_vsa_provider
         if self.fastvideo_vsa_precision != "bf16":

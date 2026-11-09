@@ -49,10 +49,16 @@ vllm-omni serve <model> --diffusion-attention-config '{
 the routing threshold. Neither option guarantees a fixed sparsity ratio.
 Skip-Softmax thresholds and calibration coefficients do not apply to SOL.
 
-This minimal adapter applies SOL at every eligible denoising step. Timestep
-gating is not implemented; exact per-role entries select the eligible layers.
-It wraps the kernel in a custom operator for `torch.compile`; warm up each input shape before CUDA
-graph capture so JIT compilation finishes outside capture.
+By default, SOL applies at every denoising step on the selected roles. Set
+`sol.start_step` to keep the first N steps dense, and optionally set
+`sol.stop_step` to return to dense attention at that zero-based step. SOL is
+active on `[start_step, stop_step)`; an omitted `stop_step` means through the
+last step. For example, `"sol": {"tau": 0.85, "start_step": 5}` uses cuDNN
+on steps 0–4 and SOL from step 5 onward. Step-gated SOL requires the pipeline
+to publish its current denoising step; Cosmos3 does this in its denoising loop.
+Exact per-role entries still select the eligible layers. The adapter wraps the
+SOL kernel in a custom operator for `torch.compile`; warm up each input shape
+before CUDA graph capture so JIT compilation finishes outside capture.
 
 ## Cosmos3 PAI runner
 

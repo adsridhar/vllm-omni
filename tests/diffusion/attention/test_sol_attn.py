@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM-Omni project
 
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 import torch
@@ -10,6 +11,7 @@ from vllm_omni.diffusion.attention.backends import sol_attn as sol
 from vllm_omni.diffusion.attention.backends.abstract import AttentionMetadata
 from vllm_omni.diffusion.attention.capabilities import AttentionComputation
 from vllm_omni.diffusion.data import AttentionConfig, AttentionSpec
+from vllm_omni.diffusion.forward_context import set_forward_context
 
 pytestmark = [pytest.mark.core_model, pytest.mark.diffusion, pytest.mark.cpu]
 
@@ -26,6 +28,59 @@ def test_sol_config_round_trip():
     for kwargs in ({"quant": {"dtype_qk": "int8"}}, {"skip_softmax": {"threshold": 0.1}}):
         with pytest.raises(ValueError):
             AttentionSpec(backend="SOL_ATTN", **kwargs)
+
+
+def test_sol_step_range_config_round_trip() -> None:
+    spec = AttentionSpec(backend="SOL_ATTN", sol={"tau": 0.85, "start_step": 5, "stop_step": 10})
+    assert spec.backend_kwargs() == {"tau": 0.85, "thresh_type": "diag", "start_step": 5, "stop_step": 10}
+    for range_values in (
+        {"start_step": -1},
+        {"start_step": 1.5},
+        {"stop_step": 0},
+        {"start_step": 5, "stop_step": 5},
+        {"start_step": 5, "stop_step": 4},
+    ):
+        with pytest.raises(ValueError):
+            AttentionSpec(backend="SOL_ATTN", sol=range_values)
+
+
+def test_sol_switches_between_cudnn_and_sol_by_step(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def dense_forward(
+        self: Any,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        attn_metadata: AttentionMetadata | None = None,
+    ) -> torch.Tensor:
+        calls.append("dense")
+        return query + 2
+
+    def sol_forward(
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        scale: float,
+        tau: float,
+        thresh_type: str,
+        kv_prefix_length: int,
+    ) -> torch.Tensor:
+        calls.append("sol")
+        return query + 1
+
+    monkeypatch.setattr(sol.CuDNNAttentionImpl, "forward_cuda", dense_forward)
+    monkeypatch.setattr(sol, "_sol_attention_op", sol_forward)
+    impl = sol.SolAttentionImpl(2, 128, 0.2, backend_kwargs={"start_step": 5, "stop_step": 10})
+    q = torch.zeros(1, 2, 2, 128, dtype=torch.bfloat16)
+    for step, expected in ((0, "dense"), (4, "dense"), (5, "sol"), (9, "sol"), (10, "dense")):
+        with set_forward_context(denoise_step_idx=step):
+            output = impl.forward_cuda(q, q, q)
+        assert calls[-1] == expected
+        assert output[0, 0, 0, 0] == (1 if expected == "sol" else 2)
+    assert calls == ["dense", "dense", "sol", "sol", "dense"]
+    with pytest.raises(RuntimeError, match="current denoising step"):
+        impl.forward_cuda(q, q, q)
 
 
 @pytest.mark.parametrize(

@@ -8,7 +8,9 @@ from functools import cache
 import torch
 
 from vllm_omni.diffusion.attention.backends.abstract import AttentionBackend, AttentionImpl, AttentionMetadata
+from vllm_omni.diffusion.attention.backends.cudnn_attn import CuDNNAttentionImpl
 from vllm_omni.diffusion.attention.capabilities import AttentionComputation
+from vllm_omni.diffusion.forward_context import get_forward_context, is_forward_context_available
 
 
 @cache
@@ -136,10 +138,29 @@ class SolAttentionImpl(AttentionImpl):
         kwargs = backend_kwargs or {}
         self.tau = float(kwargs.get("tau", 1.0))
         self.thresh_type = kwargs.get("thresh_type", "diag")
+        self.start_step = kwargs.get("start_step", 0)
+        self.stop_step = kwargs.get("stop_step")
         if not math.isfinite(self.tau):
             raise ValueError("SOL_ATTN tau must be finite.")
         if self.thresh_type not in ("diag", "exact"):
             raise ValueError("SOL_ATTN thresh_type must be 'diag' or 'exact'.")
+        if type(self.start_step) is not int or self.start_step < 0:
+            raise ValueError("SOL_ATTN start_step must be a nonnegative integer.")
+        if self.stop_step is not None and (type(self.stop_step) is not int or self.stop_step <= self.start_step):
+            raise ValueError("SOL_ATTN stop_step must be an integer greater than start_step.")
+        self._dense_attention = (
+            CuDNNAttentionImpl(
+                num_heads=num_heads,
+                head_size=head_size,
+                softmax_scale=softmax_scale,
+                causal=causal,
+                num_kv_heads=kv_heads,
+                prefix=prefix,
+                backend_explicit=True,
+            )
+            if self.start_step or self.stop_step is not None
+            else None
+        )
 
     def forward_cuda(
         self,
@@ -148,6 +169,12 @@ class SolAttentionImpl(AttentionImpl):
         value: torch.Tensor,
         attn_metadata: AttentionMetadata | None = None,
     ) -> torch.Tensor:
+        if self._dense_attention is not None:
+            step = get_forward_context().denoise_step_idx if is_forward_context_available() else None
+            if step is None:
+                raise RuntimeError("Step-gated SOL_ATTN requires a current denoising step in ForwardContext.")
+            if step < self.start_step or (self.stop_step is not None and step >= self.stop_step):
+                return self._dense_attention.forward_cuda(query, key, value, attn_metadata)
         kv_prefix_length = 0
         if attn_metadata is not None:
             extra = attn_metadata.extra
