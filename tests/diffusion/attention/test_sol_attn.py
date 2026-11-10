@@ -159,11 +159,11 @@ def test_sol_refuses_triton_fallback(monkeypatch):
         pytest.fail("The Triton kernel must not run")
 
     monkeypatch.setattr(sol, "_load_sol_attn", lambda: (lambda *args: "triton", unexpected_kernel))
-    with pytest.raises(ValueError, match="SM90 or SM100 CuTe"):
+    with pytest.raises(ValueError, match="SM90, SM100, or SM120 CuTe"):
         sol.SolAttentionBackend.validate_available()
 
 
-@pytest.mark.parametrize("backend", ["cute_sm90", "cute_sm100"])
+@pytest.mark.parametrize("backend", ["cute_sm90", "cute_sm100", "cute_sm120"])
 def test_sol_accepts_supported_cute_backends(monkeypatch: pytest.MonkeyPatch, backend: str) -> None:
     monkeypatch.setattr(sol, "_load_sol_attn", lambda: (lambda *args: backend, None))
     sol.SolAttentionBackend.validate_available()

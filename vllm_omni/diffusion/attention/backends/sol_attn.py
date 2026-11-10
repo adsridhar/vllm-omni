@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM-Omni project
-"""SM90/SM100 adapter for the reference Sol-Attn CuTe DSL kernel."""
+"""SM90/SM100/SM120 adapter for the reference Sol-Attn CuTe DSL kernel."""
 
 import math
 from functools import cache
@@ -43,8 +43,8 @@ if not hasattr(torch.ops.vllm_omni, "sol_attention"):
         get_backend, kernel = _load_sol_attn()
         # The public reference API otherwise silently selects Triton when CuTe
         # is unavailable or the GPU is unsupported. This adapter promises CuTe.
-        if query.device.type != "cuda" or get_backend(query.device) not in ("cute_sm90", "cute_sm100"):
-            raise ValueError("SOL_ATTN requires the SM90 or SM100 CuTe DSL backend (H100/H200/B200/GB200).")
+        if query.device.type != "cuda" or get_backend(query.device) not in ("cute_sm90", "cute_sm100", "cute_sm120"):
+            raise ValueError("SOL_ATTN requires the SM90, SM100, or SM120 CuTe DSL backend.")
         # The reference kernel serves equal-length MHA. Expand GQA heads and
         # supply unused text-query rows for Cosmos3's [text, video] KV layout.
         # Queries are independent in noncausal attention, so these extra rows
@@ -82,8 +82,8 @@ class SolAttentionBackend(AttentionBackend):
     @classmethod
     def validate_available(cls) -> None:
         get_backend, _ = _load_sol_attn()
-        if get_backend() not in ("cute_sm90", "cute_sm100"):
-            raise ValueError("SOL_ATTN requires the SM90 or SM100 CuTe DSL backend (H100/H200/B200/GB200).")
+        if get_backend() not in ("cute_sm90", "cute_sm100", "cute_sm120"):
+            raise ValueError("SOL_ATTN requires the SM90, SM100, or SM120 CuTe DSL backend.")
 
     @staticmethod
     def get_name() -> str:
