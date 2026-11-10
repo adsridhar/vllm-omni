@@ -1,4 +1,4 @@
-"""Check SM90/SM100 dispatch and dense-routing accuracy without model weights."""
+"""Check supported CuTe dispatch and dense-routing accuracy without model weights."""
 
 import json
 
@@ -9,8 +9,9 @@ from sol_attn import get_sol_attn_backend, sol_attn
 
 def main() -> None:
     capability = torch.cuda.get_device_capability()
-    assert capability in ((9, 0), (10, 0))
-    assert get_sol_attn_backend() == {(9, 0): "cute_sm90", (10, 0): "cute_sm100"}[capability]
+    expected_backends = {(9, 0): "cute_sm90", (10, 0): "cute_sm100", (12, 0): "cute_sm120"}
+    assert capability in expected_backends
+    assert get_sol_attn_backend() == expected_backends[capability]
     torch.manual_seed(42)
     query = torch.randn(1, 193, 4, 128, device="cuda", dtype=torch.bfloat16)  # [1,193,4,128]
     key = torch.randn_like(query)  # [1,193,4,128]
