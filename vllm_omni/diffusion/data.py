@@ -2228,10 +2228,28 @@ class BlockSparseSpec:
 
 
 @dataclass
+class SolAttentionSpec:
+    """Content-dependent SOL routing; layouts own layer and step selection."""
+
+    tau: float = 1.0
+    thresh_type: str = "diag"
+    sm120_kernel: str = "standard"
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.tau):
+            raise ValueError("sol.tau must be finite.")
+        if self.thresh_type not in ("diag", "exact"):
+            raise ValueError("sol.thresh_type must be 'diag' or 'exact'.")
+        if self.sm120_kernel not in ("standard", "int8_qk_fp8_pv"):
+            raise ValueError("sol.sm120_kernel must be 'standard' or 'int8_qk_fp8_pv'.")
+
+
+@dataclass
 class AttentionSpec:
     """Specifies a backend and its typed backend-specific config for one attention role."""
 
     backend: str
+    sol: SolAttentionSpec | None = None
     skip_softmax: SkipSoftmaxSpec | None = None
     quant: AttnQuantSpec | None = None
     fastvideo_vsa_topk: int | None = None
@@ -2244,6 +2262,9 @@ class AttentionSpec:
     def __post_init__(self) -> None:
         if not isinstance(self.backend, str):
             raise TypeError(f"Expected str for AttentionSpec.backend, got {type(self.backend)!r}")
+        self.sol = self._coerce(self.sol, SolAttentionSpec, "sol")
+        if self.sol is not None and self.backend.upper() != "SOL_ATTN":
+            raise ValueError("sol configuration requires the SOL_ATTN backend.")
         self.skip_softmax = self._coerce(self.skip_softmax, SkipSoftmaxSpec, "skip_softmax")
         self.quant = self._coerce(self.quant, AttnQuantSpec, "quant")
         self.sparge = self._coerce(self.sparge, SpargeAttnSpec, "sparge")
@@ -2299,6 +2320,10 @@ class AttentionSpec:
     def backend_kwargs(self) -> dict[str, Any] | None:
         """Serialize typed backend config into the kwargs dict the backend impl consumes."""
         kw: dict[str, Any] = {}
+        if self.sol is not None:
+            kw.update(tau=self.sol.tau, thresh_type=self.sol.thresh_type)
+            if self.sol.sm120_kernel != "standard":
+                kw["sm120_kernel"] = self.sol.sm120_kernel
         if self.backend.upper() == "FASTVIDEO_VSA" and self.fastvideo_vsa_provider != "auto":
             kw["provider"] = self.fastvideo_vsa_provider
         if self.fastvideo_vsa_precision != "bf16":
@@ -2522,6 +2547,7 @@ class AttentionConfig:
             "fastvideo_vsa_topk",
             "fastvideo_vsa_provider",
             "fastvideo_vsa_precision",
+            "sol",
             "sparge",
             "block_sparse",
             "name",

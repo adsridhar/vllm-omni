@@ -228,6 +228,12 @@ class Attention(nn.Module):
                     attn_backend_cls.get_name(),
                     dense_backend_name,
                 )
+            if not skip_sequence_parallel and attn_backend_cls.get_name() == "SOL_ATTN":
+                if any(
+                    getattr(parallel_config, name, 1) > 1
+                    for name in ("ulysses_degree", "ring_degree", "allgather_degree")
+                ):
+                    raise ValueError("SOL_ATTN currently requires sequence parallelism to be disabled.")
             allgather_degree = getattr(parallel_config, "allgather_degree", 1)
             # TODO: Move AllGather-KV compatibility into an AttentionBackend capability
             # so validation does not depend on backend names.
