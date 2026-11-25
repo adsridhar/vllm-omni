@@ -46,6 +46,7 @@ from vllm_omni.diffusion.forward_context import build_local_sp_padding_mask, get
 from vllm_omni.diffusion.layers.adalayernorm import AdaLayerNorm
 from vllm_omni.diffusion.layers.norm import LayerNorm, RMSNorm
 from vllm_omni.diffusion.layers.rope import RotaryEmbeddingWan
+from vllm_omni.diffusion.models.wan2_2.morton import morton3d_permutation
 from vllm_omni.platforms import current_omni_platform
 from vllm_omni.quantization.mxfp4_config import NPUMxfp4LinearMethod
 
@@ -1196,6 +1197,27 @@ class WanTransformer3DModel(nn.Module):
                 parallel_config.sequence_parallel_size,
             )
 
+        morton_order = ctx.omni_diffusion_config.diffusion_attention_config.wan_token_order == "morton3d"
+        if morton_order:
+            if (
+                get_pipeline_parallel_world_size() != 1
+                or (parallel_config is not None and parallel_config.sequence_parallel_size != 1)
+                or ts_seq_len is not None
+            ):
+                raise ValueError("Wan Morton ordering currently requires T2V without pipeline or sequence parallelism.")
+            permutation, inverse = morton3d_permutation(
+                (post_patch_num_frames, post_patch_height, post_patch_width), hidden_states.device
+            )  # [S], [S]
+            hidden_states = hidden_states.index_select(1, permutation)  # [B,S,C]
+            rotary_emb = tuple(freq.index_select(1, permutation) for freq in rotary_emb)  # two [1,S,1,D/2]
+            logger.info_once(
+                "Wan token ordering: morton3d; grid=(%d,%d,%d); tokens=%d; RoPE reordered; native output restored",
+                post_patch_num_frames,
+                post_patch_height,
+                post_patch_width,
+                permutation.numel(),
+            )
+
         # Transformer blocks
         # Preserve the post-patch (T, H, W) grid so VSA can partition
         # the flattened DiT sequence into spatiotemporal blocks.
@@ -1210,6 +1232,9 @@ class WanTransformer3DModel(nn.Module):
                 vsa_dit_seq_shape,
                 self.preserve_vsa_all_blocks,
             )
+
+        if morton_order:
+            hidden_states = hidden_states.index_select(1, inverse)  # [B,S,C]
 
         if not is_pipeline_last_stage():
             # Non-last PP stage: hand the token sequence to the caller via IntermediateTensors.

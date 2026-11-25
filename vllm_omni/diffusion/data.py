@@ -2293,8 +2293,12 @@ class AttentionConfig:
 
     default: AttentionSpec | None = None
     per_role: dict[str, AttentionSpec] = field(default_factory=dict)
+    # Model-level ordering around the Wan block stack, including matching RoPE rows.
+    wan_token_order: str = "native"
 
     def __post_init__(self) -> None:
+        if self.wan_token_order not in ("native", "morton3d"):
+            raise ValueError("wan_token_order must be 'native' or 'morton3d'.")
         if self.default is not None:
             self.default = self._coerce_spec_or_none(self.default, "default")
 
